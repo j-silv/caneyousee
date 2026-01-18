@@ -77,12 +77,7 @@ function addPointToChart(timestamp, distanceFt) {
 
 // ===================================================
 // ✅ YOUR POLL FUNCTION (fetch JSON, update UI + chart)
-// ===================================================
 
-// IMPORTANT:
-// - If the backend is on your SAME computer, localhost is correct.
-// - If it’s on your FRIEND’S computer, replace localhost with their IP.
-// Example: "http://192.168.1.23:5000/data"
 const DATA_URL = "http://localhost:5000/data";
 
 async function poll() {
