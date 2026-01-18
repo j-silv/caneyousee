@@ -27,11 +27,11 @@ def dummy_device_read(minval=600, maxval=1400, delay_ms=100):
     time.sleep(delay_ms / 1000)
     return datum
 
-def device_read(device, port=6):
+def device_read(device, port=2):
     """Returns a distance value (in mm)"""
 
-    ports = device.read()
-    datum = ports[port]["module"]["properties"]["position"]
+    device_read = device.read()
+    datum = float(device_read.modules[port].rawData)
     return datum
 
 def calibrate(cal_time, device, port=6, dummy=True, units="mm"):
@@ -61,7 +61,7 @@ def main():
         "-i",
         "--device",
         type=str,
-        default="/dev/cu.Leopard",
+        default="/dev/cu.SLAB_USBtoUART",
         help="Device path (default: %(default)s)"
     )
     parser.add_argument(
@@ -75,7 +75,7 @@ def main():
         "-p",
         "--port",
         type=int,
-        default=6,
+        default=2,
         help="Port number to read from (default: %(default)s)"
     )
     parser.add_argument(
@@ -111,55 +111,64 @@ def main():
     )
     args = parser.parse_args()
 
-    device = Magic.Device(args.device)
-    device.connect()
 
-    print(f"Calibrating for {args.cal_time} seconds on port {args.port}...")
-    data = calibrate(args.cal_time, device, args.port, dummy=args.dummy, units=args.units)
+    with Magic.Hardware(args.device) as device:
+        device.connect()
 
-    baseline = np.mean(data)
-    # Convert threshold to the selected units (threshold default is in feet)
-    threshold_converted = convert(args.threshold * 304.8, args.units)
-    print(f"Baseline: {baseline:.2f} {args.units}")
-    print(f"Threshold: {threshold_converted:.2f} {args.units}")
-    print(f"Debounce count: {args.debounce_count} measurements")
-    print(f"Monitoring for trigger...\n")
+        print(f"Calibrating for {args.cal_time} seconds on port {args.port} device {args.device}...")
+        data = calibrate(args.cal_time, device, args.port, dummy=args.dummy, units=args.units)
 
-    # State machine
-    state = State.NORMAL
-    exceeded_count = 0
+        baseline = np.mean(data)
+        # Convert threshold to the selected units (threshold default is in feet)
+        threshold_converted = convert(args.threshold * 304.8, args.units)
+        print(f"Baseline: {baseline:.2f} {args.units}")
+        print(f"Threshold: {threshold_converted:.2f} {args.units}")
+        print(f"Debounce count: {args.debounce_count} measurements")
+        print(f"Monitoring for trigger...\n")
 
-    while True:
-        if args.dummy:
-            distance = dummy_device_read()
-        else:
-            distance = device_read(device, args.port)
+        # State machine
+        state = State.NORMAL
+        exceeded_count = 0
 
-        distance = convert(distance, args.units)
-        is_threshold_exceeded = abs(distance - baseline) > threshold_converted
-
-        if state == State.NORMAL:
-            if is_threshold_exceeded:
-                # Transition to THRESHOLD_EXCEEDED state
-                state = State.THRESHOLD_EXCEEDED
-                exceeded_count = 1
-                print(f"Position: {distance:.2f} {args.units} - Threshold exceeded (baseline: {baseline:.2f} {args.units})")
+        while True:
+            if args.dummy:
+                distance = dummy_device_read()
             else:
-                print(f"Position: {distance:.2f} {args.units}")
+                distance = device_read(device, args.port)
 
-        elif state == State.THRESHOLD_EXCEEDED:
-            if is_threshold_exceeded:
-                # Still exceeding threshold, increment count
-                exceeded_count += 1
-                if exceeded_count >= args.debounce_count:
-                    print(f"Position: {distance:.2f} {args.units} - VIBRATION DETECTED! (baseline: {baseline:.2f} {args.units})")
+            distance = convert(distance, args.units)
+            is_threshold_exceeded = abs(distance - baseline) > threshold_converted
+
+            if state == State.NORMAL:
+                if is_threshold_exceeded:
+                    # Transition to THRESHOLD_EXCEEDED state
+                    state = State.THRESHOLD_EXCEEDED
+                    exceeded_count = 1
+                    print(f"Position: {distance:.2f} {args.units} - Threshold exceeded (baseline: {baseline:.2f} {args.units})")
                 else:
-                    print(f"Position: {distance:.2f} {args.units} - Threshold exceeded ({exceeded_count}/{args.debounce_count})")
-            else:
-                # Threshold no longer exceeded, transition back to NORMAL
-                state = State.NORMAL
-                exceeded_count = 0
-                print(f"Position: {distance:.2f} {args.units} - Threshold no longer exceeded, reset")
+                    print(f"Position: {distance:.2f} {args.units}")
+
+            elif state == State.THRESHOLD_EXCEEDED:
+                if is_threshold_exceeded:
+                    # Still exceeding threshold, increment count
+                    exceeded_count += 1
+                    if exceeded_count >= args.debounce_count:
+                        print(f"Position: {distance:.2f} {args.units} - VIBRATION DETECTED! (baseline: {baseline:.2f} {args.units})")
+                        # device.modules[0].setState(1)
+                        #                "vibration": {
+                        # "id": 26,
+                        # "functions": {
+                        #     "setState": [
+                        #         ["state", "toggle",0,1],
+                        #     ],
+                        # },
+                    else:
+                        print(f"Position: {distance:.2f} {args.units} - Threshold exceeded ({exceeded_count}/{args.debounce_count})")
+                else:
+                    # Threshold no longer exceeded, transition back to NORMAL
+                    state = State.NORMAL
+                    exceeded_count = 0
+                    print(f"Position: {distance:.2f} {args.units} - Threshold no longer exceeded, reset")
 
 if __name__ == "__main__":
     main()
