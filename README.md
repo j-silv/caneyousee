@@ -2,7 +2,9 @@
 
 ![Project overview](./imgs/project.png)
 
-A cane equipped with a distance sensor and a vibration module. The cane vibrates when it detects significant changes in ground-level elevation.
+A cane equipped with a distance sensor and a vibration module. The cane vibrates when it detects significant changes in ground-level elevation. 
+
+For additional information, check out the [DevPost](https://devpost.com/software/caneyousee) for this project.
 
 ## Tech stack
 
