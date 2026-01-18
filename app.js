@@ -1,37 +1,23 @@
 const RED = "#E30000";
 const GREEN = "#059400";
 
-const LEDGE_THRESHOLD_FT = 0.8;
-const MUST_PERSIST_MS = 700;
-const EMA_ALPHA = 0.25;
+// keep only last N points in chart
+const MAX_POINTS = 180;
 
-let active = false;
-let baselineFt = 5.0;
-
-let lastSmooth = null;
-let ledgeCandidateStart = null;
-let ledgeDetected = false;
-
-// Notification gating
-let notifEnabled = false;
-let lastNotifyAt = 0;
-const NOTIFY_COOLDOWN_MS = 8000; // don’t spam notifications
-
+// ---- UI refs ----
 const statusText = document.getElementById("statusText");
 const toggleBtn = document.getElementById("toggleBtn");
 const notifBanner = document.getElementById("notif");
 const baselineLabel = document.getElementById("baselineLabel");
 const readout = document.getElementById("readout");
+const vibeText = document.getElementById("vibeText");
 
-// NEW
-const notifyBtn = document.getElementById("notifyBtn");
-
+// baseline label (static; you can update if you calibrate)
+let baselineFt = 5.0;
 baselineLabel.textContent = `${baselineFt.toFixed(1)} ft Baseline`;
 
 // ---- Chart.js ----
 const ctx = document.getElementById("chart").getContext("2d");
-const MAX_POINTS = 180;
-
 const chart = new Chart(ctx, {
   type: "line",
   data: {
@@ -51,10 +37,9 @@ const chart = new Chart(ctx, {
   }
 });
 
+// ---- UI states ----
 function setModeLevel() {
-  ledgeDetected = false;
   notifBanner.style.display = "none";
-
   statusText.textContent = "Level Ground";
   statusText.style.color = GREEN;
   chart.data.datasets[0].borderColor = GREEN;
@@ -65,11 +50,7 @@ function setModeLevel() {
 }
 
 function setModeLedge() {
-  ledgeDetected = true;
-
-  // In-app banner
   notifBanner.style.display = "block";
-
   statusText.textContent = "Ledge Ahead";
   statusText.style.color = RED;
   chart.data.datasets[0].borderColor = RED;
@@ -77,135 +58,84 @@ function setModeLedge() {
   toggleBtn.textContent = "Deactivate";
   toggleBtn.classList.add("off");
   toggleBtn.classList.remove("on");
-
-  // NEW: Browser notification (once per ledge event, with cooldown)
-  maybeSendBrowserNotification();
 }
 
-function smooth(ft) {
-  if (lastSmooth == null) lastSmooth = ft;
-  lastSmooth = EMA_ALPHA * ft + (1 - EMA_ALPHA) * lastSmooth;
-  return lastSmooth;
-}
+// ---- Chart point function (called by poll) ----
+function addPointToChart(timestamp, distanceFt) {
+  const label = (typeof timestamp === "number") ? timestamp : Date.now();
 
-function maybeSendBrowserNotification() {
-  const now = Date.now();
-  if (!notifEnabled) return;
-  if (now - lastNotifyAt < NOTIFY_COOLDOWN_MS) return;
-
-  if (!("Notification" in window)) return;
-  if (Notification.permission !== "granted") return;
-
-  lastNotifyAt = now;
-
-  new Notification("Ledge Ahead", {
-    body: "Edge of sidewalk reached. Continue carefully and look for nearby crosswalks.",
-    // icon: "./icon.png" // optional if you have one
-  });
-}
-
-// NEW: request permission only when user clicks (required by browsers)
-notifyBtn?.addEventListener("click", async () => {
-  if (!("Notification" in window)) {
-    alert("Notifications aren’t supported in this browser.");
-    return;
-  }
-
-  const perm = await Notification.requestPermission();
-  notifEnabled = (perm === "granted");
-
-  notifyBtn.textContent = notifEnabled ? "Notifications Enabled" : "Enable Notifications";
-});
-
-// ---- Core sample handler ----
-function onDistanceSample(rawFt) {
-  const ft = smooth(rawFt);
-  readout.textContent = `${ft.toFixed(2)} ft`;
-
-  const aboveBaseline = ft > (baselineFt + LEDGE_THRESHOLD_FT);
-
-  if (aboveBaseline) {
-    if (ledgeCandidateStart == null) ledgeCandidateStart = performance.now();
-    const elapsed = performance.now() - ledgeCandidateStart;
-
-    if (!ledgeDetected && elapsed >= MUST_PERSIST_MS) {
-      setModeLedge();
-    }
-  } else {
-    ledgeCandidateStart = null;
-    if (ledgeDetected) setModeLevel();
-  }
-
-  chart.data.labels.push(Date.now());
-  chart.data.datasets[0].data.push(ft);
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(distanceFt);
 
   if (chart.data.labels.length > MAX_POINTS) {
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
   }
+
   chart.update("none");
 }
 
-// ---- WebSocket hookup ----
-let ws = null;
-let reconnectTimer = null;
+// ===================================================
+// ✅ YOUR POLL FUNCTION (fetch JSON, update UI + chart)
+// ===================================================
 
-function connectWS() {
-  const WS_URL = "ws://localhost:8000/ws";
-  ws = new WebSocket(WS_URL);
+// IMPORTANT:
+// - If the backend is on your SAME computer, localhost is correct.
+// - If it’s on your FRIEND’S computer, replace localhost with their IP.
+// Example: "http://192.168.1.23:5000/data"
+const DATA_URL = "http://localhost:5000/data";
 
-  ws.addEventListener("open", () => {
-    try { ws.send(JSON.stringify({ type: "hello" })); } catch {}
-  });
+async function poll() {
+  const res = await fetch(DATA_URL, { cache: "no-store" });
+  const json = await res.json();
 
-  ws.addEventListener("message", (event) => {
-    if (!active) return;
+  // update chart + readout
+  readout.textContent = `${json.distance_ft.toFixed(2)} ft`;
+  addPointToChart(json.timestamp, json.distance_ft);
 
-    let msg;
-    try { msg = JSON.parse(event.data); } catch { return; }
+  // vibration true/false drives UI
+  const vib = Boolean(json.vibration);
+  vibeText.textContent = `Vibration: ${vib ? "TRUE" : "FALSE"}`;
 
-    let ft = null;
-    if (msg && (msg.type === "distance" || msg.type == null)) {
-      if (typeof msg.distance_ft === "number") ft = msg.distance_ft;
-      else if (typeof msg.distance_cm === "number") ft = msg.distance_cm / 30.48;
-      else if (typeof msg.distance === "number") ft = msg.distance;
-    }
-
-    if (typeof ft === "number" && Number.isFinite(ft)) {
-      onDistanceSample(ft);
-    }
-  });
-
-  ws.addEventListener("close", scheduleReconnect);
-  ws.addEventListener("error", () => {});
+  if (vib) setModeLedge();
+  else setModeLevel();
 }
 
-function scheduleReconnect() {
-  if (reconnectTimer) return;
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    connectWS();
-  }, 800);
+// Only poll while activated
+let active = false;
+let pollTimer = null;
+
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(() => {
+    poll().catch(() => {
+      // If backend is down / CORS / network issue, don’t crash UI
+      // Optional: show disconnected state
+    });
+  }, 50);
 }
 
-connectWS();
+function stopPolling() {
+  if (!pollTimer) return;
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
 
-// ---- Activate / Deactivate ----
+// Activate/Deactivate
 toggleBtn.addEventListener("click", () => {
   active = !active;
 
   if (active) {
-    ledgeCandidateStart = null;
-    lastSmooth = null;
     setModeLevel();
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      try { ws.send(JSON.stringify({ type: "activate" })); } catch {}
-    }
+    startPolling();
   } else {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      try { ws.send(JSON.stringify({ type: "deactivate" })); } catch {}
-    }
+    stopPolling();
     setModeLevel();
+    vibeText.textContent = "Vibration: --";
+    readout.textContent = "-- ft";
   }
 });
+
+// init
+setModeLevel();
+startPolling();
