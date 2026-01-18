@@ -12,9 +12,7 @@
 
 * { box-sizing: border-box; }
 
-html, body {
-  height: 100%;
-}
+html, body { height: 100%; }
 
 body {
   margin: 0;
@@ -27,7 +25,6 @@ body {
   padding: 20px 12px;
 }
 
-/* “Phone” container */
 .phone {
   width: min(360px, 92vw);
   height: min(720px, 92vh);
@@ -43,7 +40,6 @@ body {
   border: 1px solid rgba(255,255,255,.18);
 }
 
-/* top “status” pill */
 .pill {
   margin: 26px auto 12px;
   width: 180px;
@@ -59,7 +55,6 @@ body {
 
 #statusText { color: var(--green); }
 
-/* notification banner */
 .notif {
   position: absolute;
   top: 16px;
@@ -85,7 +80,6 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* main card */
 .card {
   background: rgba(255,255,255,.96);
   border-radius: 14px;
@@ -95,14 +89,12 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
-/* canvas: make it look “embedded” */
 canvas {
   background: rgba(255,255,255,.88);
   border-radius: 12px;
   border: 1px solid rgba(0,0,0,.08);
 }
 
-/* baseline + readout row */
 .row {
   display: flex;
   justify-content: space-between;
@@ -124,7 +116,6 @@ canvas {
   opacity: 0.78;
 }
 
-/* Buttons */
 button {
   width: 100%;
   margin-top: 16px;
@@ -141,6 +132,7 @@ button {
 
 button:active { transform: translateY(1px) scale(0.99); }
 button:hover { filter: brightness(1.03); }
+
 button:focus-visible {
   outline: 3px solid rgba(255,255,255,.65);
   outline-offset: 3px;
@@ -148,19 +140,3 @@ button:focus-visible {
 
 #toggleBtn.on  { background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.08)), var(--green); }
 #toggleBtn.off { background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.08)), var(--red); }
-
-/* Optional: a secondary button style (if you have notifyBtn) */
-#notifyBtn {
-  background: rgba(255,255,255,.18);
-  border: 1px solid rgba(255,255,255,.28);
-  box-shadow: none;
-}
-
-#notifyBtn:hover { filter: brightness(1.08); }
-
-/* Make spacing nicer on small screens */
-@media (max-width: 360px) {
-  .phone { padding: 14px; border-radius: 26px; }
-  .pill { width: 170px; padding: 9px 12px; }
-  button { padding: 14px 12px; font-size: 15px; }
-}
