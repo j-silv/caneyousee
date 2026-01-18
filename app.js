@@ -84,9 +84,11 @@ async function poll() {
   const res = await fetch(DATA_URL, { cache: "no-store" });
   const json = await res.json();
 
-  // update chart + readout
-  readout.textContent = `${json.distance_ft.toFixed(2)} ft`;
-  addPointToChart(json.timestamp, json.distance_ft);
+  // update chart + readout (backend uses "distance" not "distance_ft")
+  const distance = json.distance || 0;
+  const units = json.units || "ft";
+  readout.textContent = `${distance.toFixed(2)} ${units}`;
+  addPointToChart(json.timestamp, distance);
 
   // vibration true/false drives UI
   const vib = Boolean(json.vibration);
@@ -97,17 +99,18 @@ async function poll() {
 }
 
 // Only poll while activated
-let active = false;
+let active = true; // Start as true since we auto-start polling
 let pollTimer = null;
 
 function startPolling() {
   if (pollTimer) return;
   pollTimer = setInterval(() => {
-    poll().catch(() => {
-      // If backend is down / CORS / network issue, don’t crash UI
-      // Optional: show disconnected state
+    poll().catch((err) => {
+      // If backend is down / CORS / network issue, don't crash UI
+      console.error("Poll error:", err);
+      readout.textContent = "Connection Error";
     });
-  }, 50);
+  }, 50); // 20 requests/sec for fast real-time updates
 }
 
 function stopPolling() {
@@ -131,6 +134,6 @@ toggleBtn.addEventListener("click", () => {
   }
 });
 
-// init
-setModeLevel();
+// init - start in activated state
+setModeLedge(); // Properly show "active" state in UI
 startPolling();
