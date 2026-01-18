@@ -5,7 +5,6 @@
   --blue:#35539D;
 
   --bg:#0f1115;
-  --white:#ffffff;
   --text:#0b0d12;
   --shadow: 0 18px 50px rgba(0,0,0,.35);
   --shadow-soft: 0 10px 22px rgba(0,0,0,.18);
@@ -49,36 +48,10 @@ body {
   border-radius: 999px;
   background: rgba(255,255,255,.92);
   font-weight: 900;
-  letter-spacing: .2px;
   box-shadow: 0 8px 18px rgba(0,0,0,.18);
-  backdrop-filter: blur(10px);
 }
 
 #statusText { color: var(--green); }
-
-/* UPDATED: notif is no longer absolute; it sits under the button */
-.notif {
-  margin-top: 12px;
-  background: rgba(255,255,255,.96);
-  color: var(--text);
-  border-radius: 14px;
-  padding: 12px 14px;
-  font-size: 12.5px;
-  line-height: 1.25;
-  display: none;
-  box-shadow: var(--shadow-soft);
-  border: 1px solid rgba(0,0,0,.08);
-
-  transform: translateY(-6px);
-  opacity: 0;
-  animation: notifIn .22s ease-out forwards;
-}
-
-.notif b { color: var(--red); }
-
-@keyframes notifIn {
-  to { transform: translateY(0); opacity: 1; }
-}
 
 .card {
   background: rgba(255,255,255,.96);
@@ -103,17 +76,11 @@ canvas {
   gap: 10px;
 }
 
-.footnote {
-  font-size: 12px;
-  color: var(--text);
-  font-weight: 800;
-}
-
-.small {
+.footnote, .small {
   font-size: 12px;
   color: var(--text);
   font-weight: 700;
-  opacity: 0.78;
+  opacity: 0.85;
 }
 
 button {
@@ -127,16 +94,31 @@ button {
   color: #fff;
   cursor: pointer;
   box-shadow: 0 10px 22px rgba(0,0,0,.22);
-  transition: transform .06s ease, filter .12s ease, opacity .12s ease;
 }
 
-button:active { transform: translateY(1px) scale(0.99); }
-button:hover { filter: brightness(1.03); }
+#toggleBtn.on  { background: var(--green); }
+#toggleBtn.off { background: var(--red); }
 
-button:focus-visible {
-  outline: 3px solid rgba(255,255,255,.65);
-  outline-offset: 3px;
+
+.notif {
+  margin-top: 12px;
+  background: rgba(255,255,255,.96);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.25;
+  display: none; /* JS toggles to block */
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(0,0,0,.08);
+
+  transform: translateY(-6px);
+  opacity: 0;
+  animation: notifIn .22s ease-out forwards;
 }
 
-#toggleBtn.on  { background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.08)), var(--green); }
-#toggleBtn.off { background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.08)), var(--red); }
+.notif b { color: var(--red); }
+
+@keyframes notifIn {
+  to { transform: translateY(0); opacity: 1; }
+}
