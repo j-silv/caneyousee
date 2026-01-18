@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -8,22 +9,25 @@
 </head>
 <body>
   <div class="phone">
-    <div id="notif" class="notif">
-      <b>Notification</b><br />
-      Edge of sidewalk reached, continue on your current approach but take note of crosswalks nearby.
-    </div>
-
     <div class="pill"><span id="statusText">Level Ground</span></div>
 
     <div class="card">
       <canvas id="chart" height="250"></canvas>
+
       <div class="row">
         <div class="footnote"><span id="baselineLabel">5.0 ft Baseline</span></div>
         <div class="small" id="readout">-- ft</div>
+        <div class="small" id="vibeText">Vibration: --</div>
       </div>
     </div>
 
     <button id="toggleBtn" class="on">Activate</button>
+
+    <!-- moved notification BELOW the Activate button -->
+    <div id="notif" class="notif">
+      <b>Notification</b><br />
+      Edge of sidewalk reached, continue on your current approach but take note of crosswalks nearby.
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
