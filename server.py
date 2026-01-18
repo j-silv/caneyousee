@@ -8,7 +8,7 @@ CORS(app)  # Allow React frontend to access from different port
 
 SHARED_DATA_FILE = '/tmp/sensor_data.json'
 
-@app.route('/sensor')
+@app.route('/data')
 def get_sensor_data():
     """Endpoint that returns the latest sensor data"""
     try:
@@ -31,6 +31,6 @@ def health():
 if __name__ == '__main__':
     print("Starting Flask server on http://localhost:5000")
     print("Endpoints:")
-    print("  - GET /sensor - Returns latest sensor data")
+    print("  - GET /data - Returns latest sensor data")
     print("  - GET /health - Health check")
     app.run(host='0.0.0.0', port=5000, debug=True)
