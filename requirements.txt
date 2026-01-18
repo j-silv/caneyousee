@@ -1,3 +1,5 @@
 indistinguishable-from-magic
 pyserial
 numpy
+flask
+flask-cors

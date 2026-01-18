@@ -3,11 +3,15 @@ import time
 import numpy as np
 import argparse
 import random
+import json
+import os
 from enum import Enum
 
 class State(Enum):
     NORMAL = "normal"
     THRESHOLD_EXCEEDED = "threshold_exceeded"
+
+SHARED_DATA_FILE = '/tmp/sensor_data.json'
 
 def convert(datum, units="mm"):
     """Convert units of distance data"""
@@ -138,6 +142,22 @@ def main():
 
             distance = convert(distance, args.units)
             is_threshold_exceeded = abs(distance - baseline) > threshold_converted
+
+            # Prepare sensor data for export
+            sensor_data = {
+                'distance': float(distance),
+                'units': args.units,
+                'vibration': exceeded_count >= args.debounce_count,
+                'baseline': float(baseline),
+                'threshold': float(threshold_converted),
+                'timestamp': time.time()
+            }
+
+            # Write to shared file atomically
+            tmp_file = SHARED_DATA_FILE + '.tmp'
+            with open(tmp_file, 'w') as f:
+                json.dump(sensor_data, f)
+            os.rename(tmp_file, SHARED_DATA_FILE)
 
             if state == State.NORMAL:
                 if is_threshold_exceeded:
