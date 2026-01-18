@@ -1,3 +1,4 @@
+/* styles.css */
 :root{
   --red:#E30000;
   --green:#059400;
@@ -55,11 +56,9 @@ body {
 
 #statusText { color: var(--green); }
 
+/* UPDATED: notif is no longer absolute; it sits under the button */
 .notif {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
+  margin-top: 12px;
   background: rgba(255,255,255,.96);
   color: var(--text);
   border-radius: 14px;
@@ -69,7 +68,8 @@ body {
   display: none;
   box-shadow: var(--shadow-soft);
   border: 1px solid rgba(0,0,0,.08);
-  transform: translateY(-8px);
+
+  transform: translateY(-6px);
   opacity: 0;
   animation: notifIn .22s ease-out forwards;
 }
