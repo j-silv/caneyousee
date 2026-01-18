@@ -31,12 +31,14 @@ def dummy_device_read(minval=600, maxval=1400, delay_ms=100):
     time.sleep(delay_ms / 1000)
     return datum
 
-def device_read(device, port=2):
+def device_read(device, port=4):
     """Returns a distance value (in mm)"""
 
     device_read = device.read()
-    datum = float(device_read.modules[port].rawData)
-    return datum
+    if "70B8F665C60C" in device.mesh:
+        datum = float(device.mesh["70B8F665C60C"].modules[4].data.milimeters)
+        return datum
+    return 0
 
 def calibrate(cal_time, device, port=6, dummy=True, units="mm"):
     """Measure and gather distance data from port for cal_time seconds"""
@@ -119,6 +121,13 @@ def main():
     with Magic.Hardware(args.device) as device:
         device.connect()
 
+        curr = time.time()
+
+        # to make sure device is up and running
+        while time.time() - curr < 2:
+            _ = device.read()
+            
+
         print(f"Calibrating for {args.cal_time} seconds on port {args.port} device {args.device}...")
         data = calibrate(args.cal_time, device, args.port, dummy=args.dummy, units=args.units)
 
@@ -134,6 +143,8 @@ def main():
         state = State.NORMAL
         exceeded_count = 0
 
+        vibrate = 1
+
         while True:
             if args.dummy:
                 distance = dummy_device_read()
@@ -142,6 +153,8 @@ def main():
 
             distance = convert(distance, args.units)
             is_threshold_exceeded = abs(distance - baseline) > threshold_converted
+
+            # device.mesh["70B8F665C60C"].modules[0].out.setState(exceeded_count >= args.debounce_count)
 
             # Prepare sensor data for export
             sensor_data = {
@@ -165,6 +178,7 @@ def main():
                     state = State.THRESHOLD_EXCEEDED
                     exceeded_count = 1
                     print(f"Position: {distance:.2f} {args.units} - Threshold exceeded (baseline: {baseline:.2f} {args.units})")
+                    device.mesh["70B8F665C60C"].modules[0].out.setState(1)
                 else:
                     print(f"Position: {distance:.2f} {args.units}")
 
@@ -174,14 +188,12 @@ def main():
                     exceeded_count += 1
                     if exceeded_count >= args.debounce_count:
                         print(f"Position: {distance:.2f} {args.units} - VIBRATION DETECTED! (baseline: {baseline:.2f} {args.units})")
-                        # device.modules[0].setState(1)
-                        #                "vibration": {
-                        # "id": 26,
-                        # "functions": {
-                        #     "setState": [
-                        #         ["state", "toggle",0,1],
-                        #     ],
-                        # },
+
+                        if vibrate == 0:
+                            device.mesh["70B8F665C60C"].modules[0].out.setState(1)
+                            vibrate = 1 
+                            time.sleep(1)
+             
                     else:
                         print(f"Position: {distance:.2f} {args.units} - Threshold exceeded ({exceeded_count}/{args.debounce_count})")
                 else:
@@ -189,6 +201,12 @@ def main():
                     state = State.NORMAL
                     exceeded_count = 0
                     print(f"Position: {distance:.2f} {args.units} - Threshold no longer exceeded, reset")
+
+                    if vibrate == 1:
+                        device.mesh["70B8F665C60C"].modules[0].out.setState(0)
+                        vibrate = 0
+                        time.sleep(1)
+ 
 
 if __name__ == "__main__":
     main()
